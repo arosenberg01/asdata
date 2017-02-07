@@ -39,13 +39,13 @@ class YahooGameLog:
         games.pop()
         return games
 
-    def map_yahoo_row_to_db_row(self):
+    def map_yahoo_row_to_db_row(self, session):
 
         for row in self.yahoo_rows:
             game_opp = row[1].split('@')
             is_away = True if len(game_opp) > 1 else False
 
-            NbaGame(yahoo_id=self.yahoo_id,
+            nba_game = NbaGame(yahoo_id=self.player_id,
                     date=row[0],
                     opp=game_opp.pop(),
                     away=is_away,
@@ -70,6 +70,8 @@ class YahooGameLog:
                     pf=row[20],
                     pts=row[21])
 
+            session.add(nba_game)
+
     def update_games(self, session):
         print self.game_rows
 
@@ -81,11 +83,10 @@ def main():
 
     try:
         game_log = YahooGameLog('4750')
-        # game_log.update_games(session)
-        for game in game_log.game_rows:
-            print(game)
 
-        nba_game = NbaGame()
+        game_log.map_yahoo_row_to_db_row(session)
+
+        session.commit()
     except:
         session.rollback()
         raise
