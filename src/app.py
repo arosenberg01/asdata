@@ -1,10 +1,9 @@
+from datetime import datetime
 from bs4 import BeautifulSoup, Tag
 import requests
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 from models import NbaGame, create_tables, db_connect
-
-
 
 class YahooGameLog:
     def __init__(self, player_id):
@@ -44,12 +43,12 @@ class YahooGameLog:
 
         for row in self.yahoo_rows:
             game_opp = row[1].split('@')
-            away = True if len(game_opp) > 1 else False
+            is_away = True if len(game_opp) > 1 else False
 
             NbaGame(yahoo_id=self.yahoo_id,
                     date=row[0],
                     opp=game_opp.pop(),
-                    away=true,
+                    away=is_away,
                     score=row[2],
                     minutes=row[3],
                     fgm=row[4],

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, Float, String
+from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.url import URL
 import settings
@@ -20,9 +20,11 @@ class NbaGame(Base):
     """NBA player games table"""
     __tablename__ = 'nba_game'
 
-    player_id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True)
+    yahoo_id = Column(Integer)
     date = Column(String(15))
     opp = Column(String(15))
+    away = Column(Boolean)
     score = Column(String(15))
     minutes = Column(String(15))
     fgm = Column(Integer)
