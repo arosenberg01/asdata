@@ -5,6 +5,25 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 from models import NbaGame, create_tables, db_connect
 
+def parse_date(date):
+    beforeNYE = ['Oct', 'Nov', 'Dec']
+    month_and_day = date.split(' ')
+    month = month_and_day[0]
+    day = month_and_day[1]
+    year = '2016' if month in beforeNYE else '2017'
+
+    if len(day) == 1:
+        day = '0' + day
+
+    return datetime.strptime(year + month + day, '%Y%b%d')
+
+def sec_played(time):
+    minutes_and_sec = time.split(':')
+
+    return int(minutes_and_sec[0]) * 60 + int(minutes_and_sec[1])
+
+
+
 class YahooGameLog:
     def __init__(self, player_id):
         page = requests.get('http://sports.yahoo.com/nba/players/' + player_id + '/gamelog/')
@@ -46,11 +65,11 @@ class YahooGameLog:
             is_away = True if len(game_opp) > 1 else False
 
             nba_game = NbaGame(yahoo_id=self.player_id,
-                    date=row[0],
+                    date=parse_date(row[0]),
                     opp=game_opp.pop(),
                     away=is_away,
                     score=row[2],
-                    minutes=row[3],
+                    sec_played=sec_played(row[3]),
                     fgm=row[4],
                     fga=row[5],
                     fg_pct=row[6],

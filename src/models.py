@@ -1,7 +1,8 @@
-from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean
+from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.url import URL
 import settings
+
 
 Base = declarative_base()
 
@@ -22,11 +23,11 @@ class NbaGame(Base):
 
     id = Column(Integer, primary_key=True)
     yahoo_id = Column(Integer)
-    date = Column(String(15))
+    date = Column(DateTime)
     opp = Column(String(15))
     away = Column(Boolean)
     score = Column(String(15))
-    minutes = Column(String(15))
+    sec_played = Column(Integer)
     fgm = Column(Integer)
     fga = Column(Integer)
     fg_pct = Column(Float)
