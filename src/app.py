@@ -1,6 +1,7 @@
 from datetime import datetime
 from bs4 import BeautifulSoup, Tag
 import requests
+from sqlalchemy import exists, and_
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 from models import NbaGame, create_tables, db_connect
@@ -58,18 +59,20 @@ class YahooGameLog:
         games.pop()
         return games
 
-    def map_yahoo_row_to_db_row(self, session):
+    def update_games(self, session):
 
         for row in self.yahoo_rows:
             game_opp = row[1].split('@')
             is_away = True if len(game_opp) > 1 else False
+            date = parse_date(row[0])
+            seconds_played = sec_played(row[3])
 
             nba_game = NbaGame(yahoo_id=self.player_id,
-                    date=parse_date(row[0]),
+                    date=date,
                     opp=game_opp.pop(),
                     away=is_away,
                     score=row[2],
-                    sec_played=sec_played(row[3]),
+                    sec_played=seconds_played,
                     fgm=row[4],
                     fga=row[5],
                     fg_pct=row[6],
@@ -89,21 +92,25 @@ class YahooGameLog:
                     pf=row[20],
                     pts=row[21])
 
-            session.add(nba_game)
+            # if session.query(NbaGame).filter(NbaGame.date == nba_game['date']).first() is None:
+            if session.query(NbaGame).\
+                    filter(NbaGame.date == nba_game.date).\
+                    filter(NbaGame.yahoo_id == nba_game.yahoo_id).\
+                    first() is None:
 
-    def update_games(self, session):
-        print self.game_rows
+                session.add(nba_game)
+            else:
+                print('\n----------\nnba game already exists\n----------\n')
 
 def main():
-    engine = db_connect()
-    create_tables(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
     try:
-        game_log = YahooGameLog('4750')
+        engine = db_connect()
+        create_tables(engine)
+        Session = sessionmaker(bind=engine)
+        session = Session()
 
-        game_log.map_yahoo_row_to_db_row(session)
+        game_log = YahooGameLog('4750')
+        game_log.update_games(session)
 
         session.commit()
     except:
