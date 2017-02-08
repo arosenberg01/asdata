@@ -23,8 +23,6 @@ def sec_played(time):
 
     return int(minutes_and_sec[0]) * 60 + int(minutes_and_sec[1])
 
-
-
 class YahooGameLog:
     def __init__(self, player_id):
         page = requests.get('http://sports.yahoo.com/nba/players/' + player_id + '/gamelog/')
@@ -102,15 +100,16 @@ class YahooGameLog:
             else:
                 print('\n----------\nnba game already exists\n----------\n')
 
-def main():
+def main(yahoo_ids):
     try:
         engine = db_connect()
         create_tables(engine)
         Session = sessionmaker(bind=engine)
         session = Session()
 
-        game_log = YahooGameLog('4750')
-        game_log.update_games(session)
+        for yahoo_id in yahoo_ids:
+            game_log = YahooGameLog(yahoo_id)
+            game_log.update_games(session)
 
         session.commit()
     except:
@@ -119,7 +118,8 @@ def main():
     finally:
         session.close()
 
-if __name__ == "__main__":
-    main()
+def handler(event, context):
+    main(event.yahoo_ids)
 
-game_log = YahooGameLog('4750')
+if __name__ == "__main__":
+    main(['4942'])
