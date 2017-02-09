@@ -101,25 +101,28 @@ class YahooGameLog:
                 print('\n----------\nnba game already exists\n----------\n')
 
 def main(yahoo_ids):
-    try:
-        engine = db_connect()
-        create_tables(engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
+    print('running')
+    engine = db_connect()
+    create_tables(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
+    try:
         for yahoo_id in yahoo_ids:
             game_log = YahooGameLog(yahoo_id)
             game_log.update_games(session)
 
         session.commit()
-    except:
+    except Exception as e:
+        print(e)
         session.rollback()
         raise
     finally:
         session.close()
 
 def handler(event, context):
-    main(event.yahoo_ids)
+    print(event)
+    main(event['yahoo_ids'])
 
 if __name__ == "__main__":
     main(['4942'])
