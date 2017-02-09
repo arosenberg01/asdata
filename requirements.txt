@@ -1,0 +1,7 @@
+beautifulsoup4==4.5.3
+lxml==3.7.2
+MySQL-python==1.2.5
+PyMySQL==0.7.9
+requests==2.13.0
+SQLAlchemy==1.1.5
+wheel==0.24.0
