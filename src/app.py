@@ -66,15 +66,20 @@ class NbaPlayer:
         team_info = top.find('span', attrs={'class': 'team-info'})
         num_and_pos = team_info.find(text=True).split(',')
         team = team_info
+        height = self.info_section.find('li', attrs={'class': 'height'}).find('dd').find(text=True).split('-')
+        inches = int(height[0]) * 12 + int(height[1])
+        date = self.info_section.find('li', attrs={'class': 'born'}).find('dd').find(text=True).replace(',', '').split(' ')
+        day = date[1] if len(date[1]) == 1 else '0' + date[1]
+        born = datetime.strptime(date[2] + date[0] + day, '%Y%B%d')
 
         player_info = {
             'name': top.find('h1').find(text=True),
             'team': team_info.find('a').find(text=True),
             'number': num_and_pos[0].split('#')[1].encode('utf-8'),
             'pos': num_and_pos[1].encode('utf-8'),
-            'height': '',
-            'weight': '',
-            'born': '',
+            'height': inches,
+            'weight': int(self.info_section.find('li', attrs={'class': 'weight'}).find('dd').find(text=True)),
+            'born': born,
 
         }
 
