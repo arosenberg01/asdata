@@ -58,6 +58,5 @@ class NbaPlayer(Base):
     height = Column(Integer)
     weight = Column(Integer)
     born = Column(DateTime)
-    team = Column(String)
     children = relationship("NbaGame")
 

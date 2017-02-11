@@ -1,6 +1,6 @@
 import os
 
-print(os.environ['NBA_DB_USER'])
+print(os.environ['NBA_DB_DRIVER'])
 
 DATABASE = {
     'drivername': os.environ['NBA_DB_DRIVER'],
