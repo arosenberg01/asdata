@@ -1,13 +1,17 @@
+import logging
+import sys
 from datetime import datetime
 from bs4 import BeautifulSoup, Tag
 import requests
-from sqlalchemy import exists, and_
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql import text
 from models import NbaGame, NbaPlayer, create_tables, db_connect
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+logger.addHandler(handler)
 
-def parse_game_date(date):
+def game_date(date):
     beforeNYE = ['Oct', 'Nov', 'Dec']
     month_and_day = date.split(' ')
     month = month_and_day[0]
@@ -29,29 +33,20 @@ class NbaPlayerPage:
         page = requests.get('http://sports.yahoo.com/nba/players/' + player_id + '/gamelog/')
         self.player_id = player_id
         self.soup = BeautifulSoup(page.text, 'lxml')
-        self.info_section = self.soup.find('div', attrs={'id': 'mediasportsplayerheader'})
-        self.table = self.soup.find('table', attrs={'summary': 'Player '})
         self.player_info = self.parse_info_section()
         self.game_log = self.parse_game_log()
 
-    def parse_game_log_columns(self):
-        names = []
-        headers = self.table.find('thead').find_all('tr')[1]
-
-        for header in headers:
-            if isinstance(header, Tag):
-                names.append(header.text)
-
-        return names
-
     def parse_game_log(self):
         games = []
-        rows = self.table.find('tbody').find_all('tr')
+        column_names = []
+        table = self.soup.find('table', attrs={'summary': 'Player '})
+        rows = table.find('tbody').find_all('tr')
+        column_headers = table.find('thead').find_all('tr')[1]
+
         for row in rows:
             game = []
             header_col = row.find_all('th')[0]
             cols = row.find_all('td')
-
             game.append(header_col.find(text=True))
 
             for cell in cols:
@@ -60,19 +55,23 @@ class NbaPlayerPage:
             games.append(game)
         games.pop()
 
+        for header in column_headers:
+            if isinstance(header, Tag):
+                column_names.append(header.text)
+
         return {
-            'columns': self.parse_game_log_columns(),
+            'columns': column_names,
             'rows': games
         }
 
     def parse_info_section(self):
-        top = self.info_section.find('div', attrs={'class': 'player-info'})
+        info_section = self.soup.find('div', attrs={'id': 'mediasportsplayerheader'})
+        top = info_section.find('div', attrs={'class': 'player-info'})
         team_info = top.find('span', attrs={'class': 'team-info'})
         num_and_pos = team_info.find(text=True).split(',')
-        team = team_info
-        height = self.info_section.find('li', attrs={'class': 'height'}).find('dd').find(text=True).split('-')
+        height = info_section.find('li', attrs={'class': 'height'}).find('dd').find(text=True).split('-')
         inches = int(height[0]) * 12 + int(height[1])
-        date = self.info_section.find('li', attrs={'class': 'born'}).find('dd').find(text=True).replace(',', '').split(' ')
+        date = info_section.find('li', attrs={'class': 'born'}).find('dd').find(text=True).replace(',', '').split(' ')
         day = date[1] if len(date[1]) == 2 else '0' + date[1]
         born = datetime.strptime(date[2] + date[0] + day, '%Y%B%d')
 
@@ -82,7 +81,7 @@ class NbaPlayerPage:
             'number': num_and_pos[0].split('#')[1].encode('utf-8'),
             'pos': num_and_pos[1].encode('utf-8'),
             'height': inches,
-            'weight': int(self.info_section.find('li', attrs={'class': 'weight'}).find('dd').find(text=True)),
+            'weight': int(info_section.find('li', attrs={'class': 'weight'}).find('dd').find(text=True)),
             'born': born
         }
 
@@ -104,10 +103,10 @@ class NbaPlayerPage:
                 filter(NbaPlayer.id == nba_player.id). \
                 first() is None:
 
-            print('\n----------\ninserting nba player: true\n')
+            logger.info('\n----------\ninserting nba player: true\n')
             session.add(nba_player)
         else:
-            print('\n----------\ninserting nba player: false\n')
+            logger.info('\n----------\ninserting nba player: false\n')
 
         return ''
 
@@ -116,7 +115,7 @@ class NbaPlayerPage:
         for row in self.game_log['rows']:
             game_opp = row[1].split('@')
             is_away = True if len(game_opp) > 1 else False
-            date = parse_game_date(row[0])
+            date = game_date(row[0])
             seconds_played = sec_played(row[3])
 
             nba_game = NbaGame(
@@ -152,17 +151,21 @@ class NbaPlayerPage:
                     filter(NbaGame.player_id == nba_game.player_id).\
                     first() is None:
 
-                print('\n----------\ninserting nba game: true\n')
+                logger.info('\n----------\ninserting nba game: true\n')
                 session.add(nba_game)
             else:
-                print('\n----------\ninserting nba game: false\n')
+                logger.info('\n----------\ninserting nba game: false\n')
 
 def main(yahoo_ids):
-    print('running')
-    engine = db_connect()
-    create_tables(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    try:
+        engine = db_connect()
+        create_tables(engine)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        logger.info("SUCCESS: Connection to RDS mysql instance succeeded")
+    except:
+        logger.error("ERROR: Unexpected error: Could not connect to mysql instance.")
+        sys.exit()
 
     try:
         for yahoo_id in yahoo_ids:
