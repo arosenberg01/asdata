@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean, DateTime
+from sqlalchemy import create_engine, Column, ForeignKey, Integer, Float, String, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.url import URL
+from sqlalchemy.orm import relationship
 import settings
-
+import pymysql
 
 Base = declarative_base()
 
@@ -18,11 +19,10 @@ def create_tables(engine):
     Base.metadata.create_all(engine)
 
 class NbaGame(Base):
-    """NBA player games table"""
     __tablename__ = 'nba_game'
 
     id = Column(Integer, primary_key=True)
-    yahoo_id = Column(Integer)
+    player_id = Column(Integer, ForeignKey('nbaplayer.id'))
     date = Column(DateTime)
     opp = Column(String(15))
     away = Column(Boolean)
@@ -46,4 +46,18 @@ class NbaGame(Base):
     blk = Column(Integer)
     pf = Column(Integer)
     pts = Column(Integer)
+
+
+class NbaPlayer(Base):
+    __tablename__ = 'nba_player'
+
+    id = Column(Integer, primary_key=True, autoincrement=False)
+    name = Column(String)
+    team = Column(String)
+    pos = Column(String)
+    height = Column(Integer)
+    weight = Column(Integer)
+    born = Column(DateTime)
+    team = Column(String)
+    children = relationship("NbaGame")
 
