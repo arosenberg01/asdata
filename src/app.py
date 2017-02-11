@@ -4,10 +4,10 @@ import requests
 from sqlalchemy import exists, and_
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
-from models import NbaGame, create_tables, db_connect
+from models import NbaGame, NbaPlayer, create_tables, db_connect
 
 
-def parse_date(date):
+def parse_game_date(date):
     beforeNYE = ['Oct', 'Nov', 'Dec']
     month_and_day = date.split(' ')
     month = month_and_day[0]
@@ -24,7 +24,7 @@ def sec_played(time):
 
     return int(minutes_and_sec[0]) * 60 + int(minutes_and_sec[1])
 
-class NbaPlayer:
+class NbaPlayerPage:
     def __init__(self, player_id):
         page = requests.get('http://sports.yahoo.com/nba/players/' + player_id + '/gamelog/')
         self.player_id = player_id
@@ -32,7 +32,6 @@ class NbaPlayer:
         self.info_section = self.soup.find('div', attrs={'id': 'mediasportsplayerheader'})
         self.table = self.soup.find('table', attrs={'summary': 'Player '})
         self.player_info = self.parse_info_section()
-        self.game_log_columns = self.parse_game_log_columns()
         self.game_log = self.parse_game_log()
 
     def parse_game_log_columns(self):
@@ -42,6 +41,7 @@ class NbaPlayer:
         for header in headers:
             if isinstance(header, Tag):
                 names.append(header.text)
+
         return names
 
     def parse_game_log(self):
@@ -59,7 +59,11 @@ class NbaPlayer:
 
             games.append(game)
         games.pop()
-        return games
+
+        return {
+            'columns': self.parse_game_log_columns(),
+            'rows': games
+        }
 
     def parse_info_section(self):
         top = self.info_section.find('div', attrs={'class': 'player-info'})
@@ -69,7 +73,7 @@ class NbaPlayer:
         height = self.info_section.find('li', attrs={'class': 'height'}).find('dd').find(text=True).split('-')
         inches = int(height[0]) * 12 + int(height[1])
         date = self.info_section.find('li', attrs={'class': 'born'}).find('dd').find(text=True).replace(',', '').split(' ')
-        day = date[1] if len(date[1]) == 1 else '0' + date[1]
+        day = date[1] if len(date[1]) == 2 else '0' + date[1]
         born = datetime.strptime(date[2] + date[0] + day, '%Y%B%d')
 
         player_info = {
@@ -79,44 +83,44 @@ class NbaPlayer:
             'pos': num_and_pos[1].encode('utf-8'),
             'height': inches,
             'weight': int(self.info_section.find('li', attrs={'class': 'weight'}).find('dd').find(text=True)),
-            'born': born,
-
+            'born': born
         }
 
         return player_info
 
-    def update_player_info(self, session, force_update):
-        # nba_player = NbaPlayer(
-        #     id=self.player_id,
-        #     name=name,
-        #     team=team,
-        #     pos=pos,
-        #     height=height,
-        #     weight=weight,
-        #     born=born,
-        # )
+    def update_player_info(self, session, force_update=False):
+        nba_player = NbaPlayer(
+            id=self.player_id,
+            name=self.player_info['name'],
+            team=self.player_info['team'],
+            pos=self.player_info['pos'],
+            height=self.player_info['height'],
+            weight=self.player_info['weight'],
+            born=self.player_info['born']
+        )
 
         # if session.query(NbaGame).filter(NbaGame.date == nba_game['date']).first() is None:
         if force_update or session.query(NbaPlayer). \
                 filter(NbaPlayer.id == nba_player.id). \
                 first() is None:
 
+            print('\n----------\ninserting nba player: true\n')
             session.add(nba_player)
         else:
-            print('\n----------\nnba game already exists\n----------\n')
+            print('\n----------\ninserting nba player: false\n')
 
         return ''
 
-    def update_games(self, session, force_update):
+    def update_games(self, session, force_update=False):
 
-        for row in self.yahoo_rows:
+        for row in self.game_log['rows']:
             game_opp = row[1].split('@')
             is_away = True if len(game_opp) > 1 else False
-            date = parse_date(row[0])
+            date = parse_game_date(row[0])
             seconds_played = sec_played(row[3])
 
             nba_game = NbaGame(
-                yahoo_id=self.player_id,
+                player_id=self.player_id,
                 date=date,
                 opp=game_opp.pop(),
                 away=is_away,
@@ -145,21 +149,13 @@ class NbaPlayer:
             # if session.query(NbaGame).filter(NbaGame.date == nba_game['date']).first() is None:
             if force_update or session.query(NbaGame).\
                     filter(NbaGame.date == nba_game.date).\
-                    filter(NbaGame.yahoo_id == nba_game.yahoo_id).\
+                    filter(NbaGame.player_id == nba_game.player_id).\
                     first() is None:
 
+                print('\n----------\ninserting nba game: true\n')
                 session.add(nba_game)
             else:
-                print('\n----------\nnba game already exists\n----------\n')
-
-class YahooNbaPlayer:
-    def __init__(self, player_id):
-        page = requests.get('http://sports.yahoo.com/nba/players/' + player_id + '/gamelog/')
-        self.player_id = player_id
-        self.table = BeautifulSoup(page.text, 'lxml').find("table", attrs={"summary": "Player "})
-        self.column_names = self.parse_game_log_headers()
-        self.yahoo_rows = self.parse_game_log()
-
+                print('\n----------\ninserting nba game: false\n')
 
 def main(yahoo_ids):
     print('running')
@@ -169,7 +165,12 @@ def main(yahoo_ids):
     session = Session()
 
     try:
+        for yahoo_id in yahoo_ids:
+            nba_player = NbaPlayerPage(yahoo_id)
+            nba_player.update_player_info(session)
+            nba_player.update_games(session)
 
+        # isaiah = session.query(NbaPlayer).filter_by(name='Isaiah Thomas').one()
 
         session.commit()
     except Exception as e:
@@ -186,7 +187,7 @@ def main(yahoo_ids):
 
 def update_players(session, yahoo_ids):
     for yahoo_id in yahoo_ids:
-        nba_player = YahooNbaPlayer(yahoo_id)
+        nba_player = NbaPlayerPage(yahoo_id)
         nba_player.update_info(session)
 
 def handler(event, context):
@@ -194,6 +195,6 @@ def handler(event, context):
     main(event['yahoo_ids'])
 
 if __name__ == "__main__":
-    # main(['4942'])
-    nba_player = NbaPlayer('4942')
+    main(['4750', '4942'])
+    # nba_player = NbaPlayer('4942')
 

@@ -22,7 +22,7 @@ class NbaGame(Base):
     __tablename__ = 'nba_game'
 
     id = Column(Integer, primary_key=True)
-    player_id = Column(Integer, ForeignKey('nbaplayer.id'))
+    player_id = Column(Integer, ForeignKey('nba_player.id'))
     date = Column(DateTime)
     opp = Column(String(15))
     away = Column(Boolean)
@@ -52,11 +52,10 @@ class NbaPlayer(Base):
     __tablename__ = 'nba_player'
 
     id = Column(Integer, primary_key=True, autoincrement=False)
-    name = Column(String)
-    team = Column(String)
-    pos = Column(String)
+    name = Column(String(100))
+    team = Column(String(20))
+    pos = Column(String(20))
     height = Column(Integer)
     weight = Column(Integer)
     born = Column(DateTime)
     children = relationship("NbaGame")
-
