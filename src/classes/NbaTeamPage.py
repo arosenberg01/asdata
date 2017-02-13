@@ -10,7 +10,7 @@ class NbaTeamPage:
         page = requests.get('http://sports.yahoo.com/nba/teams/' + team_id + '/roster/')
         self.team_id = team_id
         self.soup = BeautifulSoup(page.text, 'lxml')
-        self.roster = self.parse_roster()
+        self.player_ids = self.parse_roster()
 
     def parse_roster(self):
         player_ids = []
@@ -23,15 +23,17 @@ class NbaTeamPage:
         return player_ids
 
 
-    def update_roster(self, player_ids, session):
-        nba_team = NbaTeam.query.filter_by(id=self.team_id).first()
+    def update_roster(self, session):
+        nba_team = session.query(NbaTeam).filter(NbaTeam.id == self.team_id).first()
 
         if nba_team is None:
+            logger.info('\n----------\ncreating new team: %s', self.team_id)
             nba_team = NbaTeam(
                 id=self.team_id,
-                players=player_ids
+                player_ids=''.join(self.player_ids)
             )
         else:
-            nba_team.players = player_ids
+            logger.info('\n----------\nupdating team: %s', self.team_id)
+            nba_team.players = self.player_ids
 
         session.add(nba_team)
