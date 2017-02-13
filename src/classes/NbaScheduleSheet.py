@@ -1,12 +1,7 @@
-from datetime import datetime
-import requests
+import datetime
 import xlrd
-
-class NbaTeamPage:
-    def __init__(self, team_id):
-        self.team_id = team_id
-        page = requests.get('http://sports.yahoo.com/nba/teams/' + team_id + '/roster/')
-
+from ..models import NbaSchedule
+from ..utilities import team_mappings
 
 def schedule_date(date):
     beforeNYE = ['10', '11', '12']
@@ -20,9 +15,7 @@ def schedule_date(date):
 
     return datetime.strptime(year + month + day, '%Y%m%d')
 
-
-
-class NbaSchedule:
+class NbaScheduleSheet:
     def __init__(self):
         self.schedule = self.parse_schedule()
 
@@ -31,6 +24,7 @@ class NbaSchedule:
         worksheet = workbook.sheet_by_name('vertical')
         num_cols = worksheet.ncols
         schedule = {}
+        teams = {}
 
         for col_idx in range(1, num_cols - 1):
             games = []
@@ -43,14 +37,25 @@ class NbaSchedule:
                     }
                     games.append(game)
 
-            schedule[worksheet.cell(0, col_idx).value] = games
+            team = str((worksheet.cell(0, col_idx).value)).lower()
 
+            team_id = team_mappings['abrv_city_to_abrv_full'][team]
+
+            schedule[team_id] = games
+            # teams[team_id] = ''
+
+        # print(teams)
+        print schedule
         return schedule
 
-    def update_schedule(self):
-        
+    def update_schedule(self, session):
+        for team, schedule in self.schedule.iteritems():
+            for game in schedule:
+                schedule_game = NbaSchedule(
+                    team=team,
+                    opp=game.opp,
+                    date=game.date
+                )
 
+                session.add(schedule_game)
 
-
-
-schedule = NbaSchedule()
