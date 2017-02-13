@@ -13,7 +13,7 @@ def db_connect():
     Returns sqlalchemy engine instance
     """
     print(URL(**settings.DATABASE))
-    return create_engine(URL(**settings.DATABASE), echo=True)
+    return create_engine(URL(**settings.DATABASE))
 
 def create_tables(engine):
     Base.metadata.create_all(engine)
@@ -53,9 +53,26 @@ class NbaPlayer(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=False)
     name = Column(String(100))
-    team = Column(String(20))
+    team = Column(String(20), ForeignKey('nba_team.id'))
     pos = Column(String(20))
     height = Column(Integer)
     weight = Column(Integer)
     born = Column(DateTime)
-    children = relationship("NbaGame")
+    children = relationship('NbaGame')
+
+class NbaTeam(Base):
+    __tablename__ = 'nba_team'
+
+    id = Column(String(5), primary_key=True, autoincrement=False)
+    player_ids = Column(String(80))
+    children = relationship('NbaPlayer')
+    children = relationship('NbaSchedule')
+
+class NbaSchedule(Base):
+    __tablename__ = 'nba_schedule'
+
+    id = Column(Integer, primary_key=True, autoincrement=False)
+    team = Column(String(10), ForeignKey('nba_team.id'))
+    opp = Column(String(10))
+    date = Column(DateTime)
+
