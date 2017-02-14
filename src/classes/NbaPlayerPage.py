@@ -1,9 +1,9 @@
 import requests
 import logging
-import datetime
-from bs4 import BeautifulSoup
-from ..models import NbaGame, NbaPlayer
-from ..utilities import game_date, sec_played
+from datetime import datetime
+from bs4 import BeautifulSoup, Tag
+from src.db.models.model import NbaGame, NbaPlayer
+from src.utilities import game_date, sec_played, team_mappings
 
 logger = logging.getLogger()
 
@@ -25,10 +25,10 @@ class NbaPlayerPage:
         for row in rows:
             game = []
             header_col = row.find_all('th')[0]
-            cols = row.find_all('td')
+            cells = row.find_all('td')
             game.append(header_col.find(text=True))
 
-            for cell in cols:
+            for cell in cells:
                 game.append(cell.find(text=True))
 
             games.append(game)
@@ -53,10 +53,12 @@ class NbaPlayerPage:
         date = info_section.find('li', attrs={'class': 'born'}).find('dd').find(text=True).replace(',', '').split(' ')
         day = date[1] if len(date[1]) == 2 else '0' + date[1]
         born = datetime.strptime(date[2] + date[0] + day, '%Y%B%d')
+        city = team_info.find('a').find(text=True)
 
         player_info = {
+            'id': self.player_id,
             'name': top.find('h1').find(text=True),
-            'team': team_info.find('a').find(text=True),
+            'team': team_mappings['city_full_to_abrv'][city],
             'number': num_and_pos[0].split('#')[1].encode('utf-8'),
             'pos': num_and_pos[1].encode('utf-8'),
             'height': inches,
@@ -67,27 +69,20 @@ class NbaPlayerPage:
         return player_info
 
     def update_player_info(self, session, force_update=False):
-        nba_player = NbaPlayer(
-            id=self.player_id,
-            name=self.player_info['name'],
-            team=self.player_info['team'],
-            pos=self.player_info['pos'],
-            height=self.player_info['height'],
-            weight=self.player_info['weight'],
-            born=self.player_info['born']
-        )
+        nba_player = session.query(NbaPlayer).filter(NbaPlayer.id == self.player_id).first()
 
-        # if session.query(NbaGame).filter(NbaGame.date == nba_game['date']).first() is None:
-        if force_update or session.query(NbaPlayer). \
-                filter(NbaPlayer.id == nba_player.id). \
-                first() is None:
-
-            logger.info('\n----------\ninserting nba player: true')
-            session.add(nba_player)
+        if nba_player is None:
+            # player doesn't exist
+            logger.info('\n----------\ninserting nba player: %s', self.player_info['name'])
+            nba_player = NbaPlayer(**self.player_info)
         else:
-            logger.info('\n----------\ninserting nba player: false')
+            # player exists - update row
+            logger.info('\n----------\nupdating nba player: %s', self.player_info['name'])
 
-        return ''
+            for key, value in self.player_info.iteritems():
+                setattr(nba_player, key, value)
+
+        session.add(nba_player)
 
     def update_games(self, session, force_update=False):
 
@@ -125,10 +120,10 @@ class NbaPlayerPage:
             )
 
             # if session.query(NbaGame).filter(NbaGame.date == nba_game['date']).first() is None:
-            if force_update or session.query(NbaGame).\
-                    filter(NbaGame.date == nba_game.date).\
-                    filter(NbaGame.player_id == nba_game.player_id).\
-                    first() is None:
+            if session.query(NbaGame).\
+                filter(NbaGame.date == nba_game.date).\
+                filter(NbaGame.player_id == nba_game.player_id).\
+                first() is None:
 
                 logger.info('\n----------\ninserting nba game: true')
                 session.add(nba_game)
