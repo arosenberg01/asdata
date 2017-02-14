@@ -53,6 +53,7 @@ class NbaPlayer(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=False)
     name = Column(String(100))
+    number = Column(String(3))
     team = Column(String(20), ForeignKey('nba_team.id'))
     pos = Column(String(20))
     height = Column(Integer)
@@ -64,9 +65,8 @@ class NbaTeam(Base):
     __tablename__ = 'nba_team'
 
     id = Column(String(5), primary_key=True, autoincrement=False)
-    player_ids = Column(String(80))
-    children = relationship('NbaPlayer')
-    children = relationship('NbaSchedule')
+    players = relationship('NbaPlayer')
+    games = relationship('NbaSchedule')
 
 class NbaSchedule(Base):
     __tablename__ = 'nba_schedule'
