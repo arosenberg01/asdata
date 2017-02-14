@@ -1,7 +1,7 @@
-import datetime
+from datetime import datetime
 import xlrd
-from ..models import NbaSchedule
-from ..utilities import team_mappings
+from src.models.model import NbaSchedule
+from src.utilities import team_mappings
 
 def schedule_date(date):
     beforeNYE = ['10', '11', '12']
@@ -44,8 +44,6 @@ class NbaScheduleSheet:
             schedule[team_id] = games
             # teams[team_id] = ''
 
-        # print(teams)
-        print schedule
         return schedule
 
     def update_schedule(self, session):

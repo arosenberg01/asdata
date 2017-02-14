@@ -23,17 +23,14 @@ class NbaTeamPage:
         return player_ids
 
 
-    def update_roster(self, session):
+    def update_team(self, session):
         nba_team = session.query(NbaTeam).filter(NbaTeam.id == self.team_id).first()
 
         if nba_team is None:
-            logger.info('\n----------\ncreating new team: %s', self.team_id)
-            nba_team = NbaTeam(
-                id=self.team_id,
-                player_ids=''.join(self.player_ids)
-            )
+            logger.info('\n----------\ncreating new team: true (%s)', self.team_id)
+            nba_team = NbaTeam(id=self.team_id)
         else:
-            logger.info('\n----------\nupdating team: %s', self.team_id)
+            logger.info('\n----------\ncreating new team: false (%s)', self.team_id)
             nba_team.players = self.player_ids
 
         session.add(nba_team)
