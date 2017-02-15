@@ -19,24 +19,26 @@ class NbaPlayerPage:
         games = []
         column_names = []
         table = self.soup.find('table', attrs={'summary': 'Player '})
-        rows = table.find('tbody').find_all('tr')
-        column_headers = table.find('thead').find_all('tr')[1]
+        if table is not None:
+            rows = table.find('tbody').find_all('tr')
+            column_headers = table.find('thead').find_all('tr')[1]
 
-        for row in rows:
-            game = []
-            header_col = row.find_all('th')[0]
-            cells = row.find_all('td')
-            game.append(header_col.find(text=True))
+            for row in rows:
+                game = []
+                cells = row.find_all('td')
 
-            for cell in cells:
-                game.append(cell.find(text=True))
+                if len(cells) > 1:
+                    header_col = row.find_all('th')[0]
+                    game.append(header_col.find(text=True))
+                    for cell in cells:
+                        game.append(cell.find(text=True))
 
-            games.append(game)
-        games.pop()
+                games.append(game)
+            games.pop()
 
-        for header in column_headers:
-            if isinstance(header, Tag):
-                column_names.append(header.text)
+            for header in column_headers:
+                if isinstance(header, Tag):
+                    column_names.append(header.text)
 
         return {
             'columns': column_names,
@@ -87,46 +89,48 @@ class NbaPlayerPage:
     def update_games(self, session, force_update=False):
 
         for row in self.game_log['rows']:
-            game_opp = row[1].split('@')
-            is_away = True if len(game_opp) > 1 else False
-            date = game_date(row[0])
-            seconds_played = sec_played(row[3])
 
-            nba_game = NbaGame(
-                player_id=self.player_id,
-                date=date,
-                opp=game_opp.pop(),
-                away=is_away,
-                score=row[2],
-                sec_played=seconds_played,
-                fgm=row[4],
-                fga=row[5],
-                fg_pct=row[6],
-                three_pm=row[7],
-                three_pa=row[8],
-                three_pct=row[9],
-                ftm=row[10],
-                fta=row[11],
-                ft_pct=row[12],
-                off_reb=row[13],
-                def_reb=row[14],
-                total_reb=row[15],
-                ast=row[16],
-                to=row[17],
-                stl=row[18],
-                blk=row[19],
-                pf=row[20],
-                pts=row[21]
-            )
+            if len(row) > 1:
+                game_opp = row[1].split('@')
+                is_away = True if len(game_opp) > 1 else False
+                date = game_date(row[0])
+                seconds_played = sec_played(row[3])
 
-            # if session.query(NbaGame).filter(NbaGame.date == nba_game['date']).first() is None:
-            if session.query(NbaGame).\
-                filter(NbaGame.date == nba_game.date).\
-                filter(NbaGame.player_id == nba_game.player_id).\
-                first() is None:
+                nba_game = NbaGame(
+                    player_id=self.player_id,
+                    date=date,
+                    opp=game_opp.pop(),
+                    away=is_away,
+                    score=row[2],
+                    sec_played=seconds_played,
+                    fgm=row[4],
+                    fga=row[5],
+                    fg_pct=row[6],
+                    three_pm=row[7],
+                    three_pa=row[8],
+                    three_pct=row[9],
+                    ftm=row[10],
+                    fta=row[11],
+                    ft_pct=row[12],
+                    off_reb=row[13],
+                    def_reb=row[14],
+                    total_reb=row[15],
+                    ast=row[16],
+                    to=row[17],
+                    stl=row[18],
+                    blk=row[19],
+                    pf=row[20],
+                    pts=row[21]
+                )
 
-                logger.info('\n----------\ninserting nba game: true')
-                session.add(nba_game)
-            else:
-                logger.info('\n----------\ninserting nba game: false')
+                # if session.query(NbaGame).filter(NbaGame.date == nba_game['date']).first() is None:
+                if session.query(NbaGame).\
+                    filter(NbaGame.date == nba_game.date).\
+                    filter(NbaGame.player_id == nba_game.player_id).\
+                    first() is None:
+
+                    logger.info('\n----------\ninserting nba game (%s): true', self.player_info['name'])
+                    session.add(nba_game)
+                else:
+                    logger.info('\n----------\ninserting nba game (%s): false', self.player_info['name'])
 
