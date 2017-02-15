@@ -2,6 +2,7 @@ import requests
 import logging
 from bs4 import BeautifulSoup
 from src.db.models.model import NbaTeam
+from src.classes.NbaPlayerPage import NbaPlayerPage
 
 logger = logging.getLogger()
 
@@ -22,6 +23,10 @@ class NbaTeamPage:
 
         return player_ids
 
+    def update_roster(self, session):
+        for player_id in self.player_ids:
+            nba_player = NbaPlayerPage(player_id)
+            nba_player.update_player_info(session)
 
     def update_team(self, session):
         nba_team = session.query(NbaTeam).filter(NbaTeam.id == self.team_id).first()
