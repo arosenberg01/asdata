@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from db.models.model import create_tables, db_connect
 from classes.NbaPlayerPage import NbaPlayerPage
 from classes.NbaTeamPage import NbaTeamPage
+from classes.NbaScheduleSheet import NbaScheduleSheet
 from utilities import team_mappings
 import time
 
@@ -45,8 +46,10 @@ def update_roster(event, context, session):
         nba_team.update_roster(session)
 
 
-def update_schedule():
-    return
+def update_schedule(event, context, session):
+    nba_schedule_sheet = NbaScheduleSheet()
+    nba_schedule_sheet.update_schedule(session)
+
 
 def update_teams(session):
     for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
@@ -63,20 +66,15 @@ def handler_switch(handler):
     return {
         'update_player_games': update_player_games,
         'update_roster': update_roster,
-        'update_schedule': update_schedule
+        'update_schedule': update_schedule,
+        'update_teams': update_teams
     }.get(handler, invalid_handler)
 
 def main(event, context):
-
-
-    start = time.time()
-
-
     session = init_db_con()
 
     try:
         # update_teams(session)
-
         handler = handler_switch(event['handler_name'])
         handler(event, context, session)
 
@@ -86,12 +84,7 @@ def main(event, context):
         session.rollback()
         raise
     finally:
-
-        end = time.time()
-        print(end - start)
         session.close()
-
-
 
 if __name__ == "__main__":
     # main({

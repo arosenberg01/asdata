@@ -1,6 +1,6 @@
 from datetime import datetime
 import xlrd
-from src.models.model import NbaSchedule
+from src.db.models.model import NbaSchedule
 from src.utilities import team_mappings
 
 def schedule_date(date):
