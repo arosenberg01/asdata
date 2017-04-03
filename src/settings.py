@@ -1,5 +1,7 @@
 import os
 
+print(os.environ['NBA_DB_NAME'])
+
 DATABASE = {
     'drivername': os.environ['NBA_DB_DRIVER'],
     'host': os.environ['NBA_DB_HOST'],

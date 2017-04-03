@@ -22,6 +22,7 @@ class NbaGame(Base):
 
     id = Column(Integer, primary_key=True)
     player_id = Column(Integer, ForeignKey('nba_player.id'))
+    game_num = Column(Integer)
     date = Column(DateTime)
     opp = Column(String(15))
     away = Column(Boolean)

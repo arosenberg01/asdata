@@ -1,16 +1,18 @@
 import logging
 import sys
 from sqlalchemy.orm import sessionmaker
-from db.models.model import create_tables, db_connect
-from classes.NbaPlayerPage import NbaPlayerPage
-from classes.NbaTeamPage import NbaTeamPage
-from classes.NbaScheduleSheet import NbaScheduleSheet
+from boto3 import client as boto3_client
+import json
 from utilities import team_mappings
-import time
+from models import create_tables, db_connect
+from classes import NbaPlayerPage
+from classes import NbaTeamPage
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
+
+lambda_client = boto3_client('lambda')
 
 def init_db_con():
     try:
@@ -28,46 +30,83 @@ def init_db_con():
 
 ### HANDLERS ###
 
+# insert individual nba player games for all teams/players, all players on a team, or specific players
 def update_player_games(event, context, session):
-    for team_id in event['args']['team_ids']:
-        nba_team = NbaTeamPage(team_id)
+    if 'team_ids' in event['args']:
+        # update all games for all teams
+        if event['args']['team_ids'][0] == 'all':
+            event['args']['team_ids'] = team_mappings['abrv_city_to_abrv_full']
 
-        for player_id in nba_team.player_ids:
+        # update games for players by team
+        for team_id in event['args']['team_ids']:
+            nba_team = NbaTeamPage(team_id)
+
+            for player_id in nba_team.player_ids:
+                nba_player = NbaPlayerPage(player_id)
+                nba_player.update_games(session)
+
+    # update games for individual players
+    if 'player_ids' in event['args']:
+        for player_id in event['args']['player_ids']:
             nba_player = NbaPlayerPage(player_id)
             nba_player.update_games(session)
 
-    # for player_id in event['args']['player_ids']:
-    #     nba_player = NbaPlayerPage(player_id)
-    #     nba_player.update_games(session)
-
 def update_roster(event, context, session):
+    if event['args']['team_ids'][0] == 'all':
+        event['args']['team_ids'] = team_mappings['abrv_city_to_abrv_full']
+
     for team_id in event['args']['team_ids']:
         nba_team = NbaTeamPage(team_id)
         nba_team.update_roster(session)
 
-
-def update_schedule(event, context, session):
-    nba_schedule_sheet = NbaScheduleSheet()
-    nba_schedule_sheet.update_schedule(session)
-
-
-def update_teams(session):
+def update_teams(event, context, session):
     for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
         team = NbaTeamPage(team_id)
         team.update_team(session)
 
+def trigger_game_updates(event, context, session):
+    for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
+        msg = {
+            'handler_name': 'update_player_games',
+            'args': {
+                'team_ids': [team_id]
+            }
+        }
+
+        print(team_id)
+
+        lambda_client.invoke(FunctionName='UpdateNbaGames',
+                             InvocationType='Event',
+                             Payload=json.dumps(msg))
+
+def trigger_roster_updates(event, context, session):
+    for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
+        msg = {
+            'handler_name': 'update_roster',
+            'args': {
+                'team_ids': [team_id]
+            }
+        }
+
+        print(team_id)
+
+        lambda_client.invoke(FunctionName='UpdateNbaGames',
+                             InvocationType='Event',
+                             Payload=json.dumps(msg))
+
 def invalid_handler(event, context, session):
     logger.error('ERROR: handler "%s" not found', event['handler_name'])
     sys.exit()
-###
 
+#######
 
 def handler_switch(handler):
     return {
         'update_player_games': update_player_games,
         'update_roster': update_roster,
-        'update_schedule': update_schedule,
-        'update_teams': update_teams
+        'update_teams': update_teams,
+        'trigger_game_updates': trigger_game_updates,
+        'trigger_roster_updates': trigger_roster_updates
     }.get(handler, invalid_handler)
 
 def main(event, context):
@@ -86,25 +125,22 @@ def main(event, context):
     finally:
         session.close()
 
+
 if __name__ == "__main__":
-    # main({
-    #     'handler_name': 'update_player_games',
-    #     'args': {
-    #         'player_ids': ['4750', '4942']
-    #     }
-    # }, {})
-    main({
-        'handler_name': 'update_player_games',
-        'args': {
-            'team_ids': ['atl']
-        }
-    }, {})
     # main({
     #     'handler_name': 'update_roster',
     #     'args': {
-    #         'team_ids': ['atl']
+    #         'team_ids': ['orl']
+    #     }
+    # }, {})    # main({
+    #     'handler_name': 'update_roster',
+    #     'args': {
+    #         'team_ids': ['orl']
     #     }
     # }, {})
-    # main(['4750', '4942'])
-    # nba_player = NbaPlayer('4942')
-
+    main({
+        'handler_name': 'trigger_game_updates',
+        'args': {
+            'team_ids': ['orl']
+        }
+    }, {})

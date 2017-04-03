@@ -17,6 +17,18 @@ def sec_played(time):
 
     return int(minutes_and_sec[0]) * 60 + int(minutes_and_sec[1])
 
+def schedule_date(date):
+    beforeNYE = ['10', '11', '12']
+    month_and_day = date.split('/')
+    month = month_and_day[0]
+    day = month_and_day[1]
+    year = '2016' if month in beforeNYE else '2017'
+
+    if len(day) == 1:
+        day = '0' + day
+
+    return datetime.strptime(year + month + day, '%Y%m%d')
+
 team_mappings = {
     'abrv_city_to_abrv_full': {
         'bos': 'bos',
@@ -58,7 +70,7 @@ team_mappings = {
          'Toronto': 'tor',
          'Chicago': 'chi',
          'Detroit': 'det',
-         'Indianapolis': 'ind',
+         'Indiana': 'ind',
          'Milwaukee': 'mil',
          'Atlanta': 'atl',
          'Charlotte': 'cha',
@@ -78,6 +90,8 @@ team_mappings = {
          'Minnesota': 'min',
          'Oklahoma City': 'okc',
          'Portland': 'por',
-         'Utah':' uth'
+         'Utah':' uth',
+         'Cleveland': 'cle',
+         'Sacramento': 'sac',
     }
 }
