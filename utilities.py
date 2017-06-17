@@ -1,6 +1,11 @@
 from datetime import datetime
 
 def game_date(date):
+    """Convert nba game date to datetime's struct_time
+    """
+    if not date:
+        return 0
+
     beforeNYE = ['Oct', 'Nov', 'Dec']
     month_and_day = date.split(' ')
     month = month_and_day[0]

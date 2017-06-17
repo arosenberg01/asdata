@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import relationship
 import settings
-import pymysql
+# import pymysql
 
 Base = declarative_base()
 

@@ -1,8 +1,10 @@
 import logging
 import sys
+import json
+import requests
+import bs4
 from sqlalchemy.orm import sessionmaker
 from boto3 import client as boto3_client
-import json
 from utilities import team_mappings
 from models import create_tables, db_connect
 from classes import NbaPlayerPage
@@ -32,6 +34,8 @@ def init_db_con():
 
 # insert individual nba player games for all teams/players, all players on a team, or specific players
 def update_player_games(event, context, session):
+    to_update = []
+
     if 'team_ids' in event['args']:
         # update all games for all teams
         if event['args']['team_ids'][0] == 'all':
@@ -39,17 +43,21 @@ def update_player_games(event, context, session):
 
         # update games for players by team
         for team_id in event['args']['team_ids']:
-            nba_team = NbaTeamPage(team_id)
+            nba_team = NbaTeamPage(team_id, requests, bs4)
 
             for player_id in nba_team.player_ids:
                 nba_player = NbaPlayerPage(player_id)
                 nba_player.update_games(session)
 
     # update games for individual players
-    if 'player_ids' in event['args']:
+    elif 'player_ids' in event['args']:
         for player_id in event['args']['player_ids']:
-            nba_player = NbaPlayerPage(player_id)
-            nba_player.update_games(session)
+            nba_player = NbaPlayerPage(player_id, requests, bs4)
+            nba_player.get(nba_player.url)
+            nba_player.convert(nba_player.html.text)
+            print(nba_player.parse_games(nba_player.soup))
+
+            # nba_player.update_games(session)
 
 def update_roster(event, context, session):
     if event['args']['team_ids'][0] == 'all':
@@ -75,7 +83,7 @@ def trigger_game_updates(event, context, session):
 
         print(team_id)
 
-        lambda_client.invoke(FunctionName='UpdateNbaGames',
+        lambda_client.invoke(FunctionName='BballScraper',
                              InvocationType='Event',
                              Payload=json.dumps(msg))
 
@@ -90,7 +98,7 @@ def trigger_roster_updates(event, context, session):
 
         print(team_id)
 
-        lambda_client.invoke(FunctionName='UpdateNbaGames',
+        lambda_client.invoke(FunctionName='BballScraper',
                              InvocationType='Event',
                              Payload=json.dumps(msg))
 
@@ -127,20 +135,28 @@ def main(event, context):
 
 
 if __name__ == "__main__":
+    # for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
+        # main({
+        #     'handler_name': 'update_roster',
+        #     'args': {
+        #         'team_ids': [team_id]
+        #     }
+        # }, {})
     # main({
-    #     'handler_name': 'update_roster',
+    #     'handler_name': 'trigger_game_updates',
     #     'args': {
-    #         'team_ids': ['orl']
+    #         'team_ids': []
     #     }
-    # }, {})    # main({
-    #     'handler_name': 'update_roster',
+    # }, {})
+    main({
+        'handler_name': 'update_player_games',
+        'args': {
+            'player_ids': ['5601']
+        }
+    }, {})
+    # main({
+    #     'handler_name': 'trigger_game_updates',
     #     'args': {
     #         'team_ids': ['orl']
     #     }
     # }, {})
-    main({
-        'handler_name': 'trigger_game_updates',
-        'args': {
-            'team_ids': ['orl']
-        }
-    }, {})
