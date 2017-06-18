@@ -2,13 +2,29 @@ import logging
 from datetime import datetime
 from bs4 import BeautifulSoup, Tag, Comment
 from models import NbaTeam, NbaGame, NbaPlayer
-from utilities import game_date, sec_played, schedule_date, team_mappings
+from utilities import game_date, sec_played, team_mappings
 
 logger = logging.getLogger()
 
+class HtmlPage:
+    def __init__(self, requester, parser):
+        self.requester = requester
+        self.parser = parser
+        self.page_text = None
+
+    def get(self, url):
+        """Retrieves web page from url."""
+        self.page_text = self.requester.get(url)
+        return self.page_text
+
+    def convert(self, text):
+        """Converts web page to a searchable entity."""
+        self.soup = self.parser.BeautifulSoup(text, 'lxml')
+        return self.soup
+
 class NbaTeamPage:
+    """Nba team page for retrieving, parsing, and persisting team data."""
     def __init__(self, team_id, requester, parser):
-        self.failed = False
         self.url = 'http://sports.yahoo.com/nba/teams/%s/roster/' % team_id
         self.requester = requester
         self.parser = parser
@@ -17,14 +33,17 @@ class NbaTeamPage:
         self.page_text = None
 
     def get(self, url):
+        """Retrieves nba team page from url."""
         self.page_text = self.requester.get(url)
         return self.page_text
 
     def convert(self, text):
+        """Converts web page to a searchable entity."""
         self.soup = self.parser.BeautifulSoup(text, 'lxml')
         return self.soup
 
     def parse_roster(self, soup):
+        """Parses nba player ids from an nba team web page."""
         player_ids = []
         roster_rows = soup.find('div', attrs={'class': 'ys-roster-table'}).find('tbody').find_all('tr')
 
@@ -37,11 +56,13 @@ class NbaTeamPage:
 
 
     def update_roster(self, session, player_ids):
+        """Create NbaPlayerPage instances from player ids and persist to session"""
         for player_id in player_ids:
             nba_player = NbaPlayerPage(player_id)
             nba_player.update_player_info(session)
 
     def update_team(self, session, team_id, player_ids):
+        """TODO"""
         nba_team = session.query(NbaTeam).filter(NbaTeam.id == team_id).first()
 
         if nba_team is None:
@@ -55,6 +76,7 @@ class NbaTeamPage:
 
 
 class NbaPlayerPage:
+    """Nba player page for retrieving, parsing, and persisting player data."""
     def __init__(self, player_id, requester, parser):
         self.url = 'http://sports.yahoo.com/nba/players/%s/gamelog/' % player_id
         self.player_id = player_id
@@ -63,14 +85,17 @@ class NbaPlayerPage:
         self.page_text = None
 
     def get(self, url):
+        """Retrieves nba player page from url."""
         self.html = self.requester.get(url)
         return self.page_text
 
-    def convert(self, html):
-        self.soup = self.parser.BeautifulSoup(html.text, 'lxml')
+    def convert(self, text):
+        """Converts web page to a searchable entity."""
+        self.soup = self.parser.BeautifulSoup(text, 'lxml')
         return self.soup
 
-    def games(self, soup):
+    def parse_games(self, soup):
+        """Parses nba player's game statistics into a table"""
         games = []
         column_names = []
         table = soup.find('table', attrs={'class': 'graph-table'})
@@ -102,6 +127,7 @@ class NbaPlayerPage:
         return self.games
 
     def parse_info_section(self, soup, player_id):
+        """Parses nba player's personal information"""
         new_info_section = soup.find('div', attrs={'class': 'ys-player'})
         new_name = new_info_section.find('span', attrs={'class': 'ys-name'}).find(text=True)
         row = new_info_section.find('div', attrs={'class': 'Row'}).find('span')
@@ -140,6 +166,7 @@ class NbaPlayerPage:
         return player_info
 
     def update_player_info(self, player_id, player_info, session, force_update=False):
+        """Persists nba player personal information to session"""
         nba_player = session.query(NbaPlayer).filter(NbaPlayer.id == player_id).first()
 
         if nba_player is None:
@@ -156,6 +183,7 @@ class NbaPlayerPage:
         session.add(nba_player)
 
     def update_games(self, player_id, player_info, games, session, force_update=False):
+        """Persists nba player's game data to session"""
         self.update_player_info(session, force_update)
 
         for idx, row in enumerate(games['rows']):

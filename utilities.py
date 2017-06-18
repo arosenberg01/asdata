@@ -1,8 +1,7 @@
 from datetime import datetime
 
 def game_date(date):
-    """Convert nba game date to datetime's struct_time
-    """
+    """Converts nba game date to datetime's struct_time"""
     if not date:
         return 0
 
@@ -18,21 +17,11 @@ def game_date(date):
     return datetime.strptime(year + month + day, '%Y%b%d')
 
 def sec_played(time):
+    """Converts mm:ss time format to total seconds"""
     minutes_and_sec = time.split(':')
 
     return int(minutes_and_sec[0]) * 60 + int(minutes_and_sec[1])
 
-def schedule_date(date):
-    beforeNYE = ['10', '11', '12']
-    month_and_day = date.split('/')
-    month = month_and_day[0]
-    day = month_and_day[1]
-    year = '2016' if month in beforeNYE else '2017'
-
-    if len(day) == 1:
-        day = '0' + day
-
-    return datetime.strptime(year + month + day, '%Y%m%d')
 
 team_mappings = {
     'abrv_city_to_abrv_full': {

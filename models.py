@@ -3,13 +3,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import relationship
 import settings
-# import pymysql
 
 Base = declarative_base()
 
 def db_connect():
-    """
-    Creates database connection using database settings from settings.py
+    """Creates database connection using database settings from settings.py
     Returns sqlalchemy engine instance
     """
     return create_engine(URL(**settings.DATABASE))
@@ -18,6 +16,7 @@ def create_tables(engine):
     Base.metadata.create_all(engine)
 
 class NbaGame(Base):
+    """Represents the game statistics for a single NBA player in a single game"""
     __tablename__ = 'nba_game'
 
     id = Column(Integer, primary_key=True)
@@ -49,6 +48,7 @@ class NbaGame(Base):
 
 
 class NbaPlayer(Base):
+    """Represents the personal information for a single NBA player"""
     __tablename__ = 'nba_player'
 
     id = Column(Integer, primary_key=True, autoincrement=False)
@@ -62,6 +62,7 @@ class NbaPlayer(Base):
     children = relationship('NbaGame')
 
 class NbaTeam(Base):
+    """Represents an NBA team"""
     __tablename__ = 'nba_team'
 
     id = Column(String(5), primary_key=True, autoincrement=False)
@@ -69,6 +70,7 @@ class NbaTeam(Base):
     games = relationship('NbaSchedule')
 
 class NbaSchedule(Base):
+    """Represents a single NBA game date"""
     __tablename__ = 'nba_schedule'
 
     id = Column(Integer, primary_key=True, autoincrement=False)

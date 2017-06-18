@@ -13,10 +13,10 @@ from classes import NbaTeamPage
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
-
 lambda_client = boto3_client('lambda')
 
 def init_db_con():
+    """Initializes db connection session"""
     try:
         engine = db_connect()
         create_tables(engine)
@@ -32,9 +32,8 @@ def init_db_con():
 
 ### HANDLERS ###
 
-# insert individual nba player games for all teams/players, all players on a team, or specific players
 def update_player_games(event, context, session):
-    to_update = []
+    """Persists individual nba player games for all teams/players, all players on a team, or specific players."""
 
     if 'team_ids' in event['args']:
         # update all games for all teams
@@ -60,6 +59,7 @@ def update_player_games(event, context, session):
             # nba_player.update_games(session)
 
 def update_roster(event, context, session):
+    """Persists nba team roster."""
     if event['args']['team_ids'][0] == 'all':
         event['args']['team_ids'] = team_mappings['abrv_city_to_abrv_full']
 
@@ -68,11 +68,13 @@ def update_roster(event, context, session):
         nba_team.update_roster(session)
 
 def update_teams(event, context, session):
+    """Persist nba team ids."""
     for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
         team = NbaTeamPage(team_id)
         team.update_team(session)
 
 def trigger_game_updates(event, context, session):
+    """Triggers distinct game update handler (in production) for each nba team."""
     for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
         msg = {
             'handler_name': 'update_player_games',
@@ -81,13 +83,12 @@ def trigger_game_updates(event, context, session):
             }
         }
 
-        print(team_id)
-
         lambda_client.invoke(FunctionName='BballScraper',
                              InvocationType='Event',
                              Payload=json.dumps(msg))
 
 def trigger_roster_updates(event, context, session):
+    """Triggers roster update handler (in production) for each nba team."""
     for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
         msg = {
             'handler_name': 'update_roster',
@@ -96,19 +97,19 @@ def trigger_roster_updates(event, context, session):
             }
         }
 
-        print(team_id)
-
         lambda_client.invoke(FunctionName='BballScraper',
                              InvocationType='Event',
                              Payload=json.dumps(msg))
 
 def invalid_handler(event, context, session):
+    """Logs invocation of invalid handler attempt"""
     logger.error('ERROR: handler "%s" not found', event['handler_name'])
     sys.exit()
 
 #######
 
 def handler_switch(handler):
+    """Use handler name to call appropriate handler with arguments object."""
     return {
         'update_player_games': update_player_games,
         'update_roster': update_roster,
@@ -118,10 +119,10 @@ def handler_switch(handler):
     }.get(handler, invalid_handler)
 
 def main(event, context):
+    """Handles AWS Lambda invocation and routes to correct sub-handler"""
     session = init_db_con()
 
     try:
-        # update_teams(session)
         handler = handler_switch(event['handler_name'])
         handler(event, context, session)
 
@@ -132,31 +133,3 @@ def main(event, context):
         raise
     finally:
         session.close()
-
-
-if __name__ == "__main__":
-    # for team_id in team_mappings['abrv_city_to_abrv_full'].itervalues():
-        # main({
-        #     'handler_name': 'update_roster',
-        #     'args': {
-        #         'team_ids': [team_id]
-        #     }
-        # }, {})
-    # main({
-    #     'handler_name': 'trigger_game_updates',
-    #     'args': {
-    #         'team_ids': []
-    #     }
-    # }, {})
-    main({
-        'handler_name': 'update_player_games',
-        'args': {
-            'player_ids': ['5601']
-        }
-    }, {})
-    # main({
-    #     'handler_name': 'trigger_game_updates',
-    #     'args': {
-    #         'team_ids': ['orl']
-    #     }
-    # }, {})
