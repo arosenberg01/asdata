@@ -64,6 +64,6 @@ python -m unittest discover tests
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/arosenberg01/asdata/blob/master/LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE.txt](https://github.com/arosenberg01/asdata/blob/master/LICENSE.txt) file for details
 
 
