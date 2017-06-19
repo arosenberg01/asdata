@@ -26,7 +26,7 @@ The only remaining requirement to use the service is to supply a SQLAlchemy-comp
 
 Incoming events are handling through the handler.main, which expects a dictionary as an argument with 'handler_name' and 'args'. 'handler_name' is used to route to the correct sub-handler, and args contains specific function arguments
 
-A sample invocation of updating all game data for a single NBA player can be triggering locally by adding the following to the bottom of [handlers.py](https://github.com/arosenberg01/asdata/blob/master/handlers.py)
+A sample invocation of updating all game data for a single NBA player can be triggering locally by adding the following to the bottom of [handlers.py](https://github.com/arosenberg01/asdata/blob/master/handlers.py):
 
 ```python
 if __name__ == "__main__":
@@ -36,6 +36,12 @@ if __name__ == "__main__":
             'player_ids': ['5601']
     }
 }, {})
+```
+
+And then run:
+
+```
+python handlers.py
 ```
 
 ### Unit tests

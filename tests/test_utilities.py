@@ -1,13 +1,8 @@
 import unittest
 
 from utilities import (
-    game_date,
-    sec_played,
-    schedule_date
+    sec_played
 )
-
-# class TestGameDate(unittest.TestCase):
-#     def test_game_date
 
 class TestSecPlayed(unittest.TestCase):
 
